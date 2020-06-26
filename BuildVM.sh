@@ -187,7 +187,9 @@ fi
 # Cloning in the following recreates the source disk image without change, including things 
 # we don't want such as hostname, any temporary log files, bash history etc. It creates new 
 # storage of the right size and correct XML for the new VM. It must be done as root.
-# virt-clone can assign a random MAC address in the XML, but we don't ever want this.
+# virt-clone can assign what it calls a random MAC address in the XML, being a QEMU
+# range with the last three bytes randomised. We don't ever want this (see 
+# https://en.wikipedia.org/wiki/MAC_address#Universal_Addresses_that_are_Administered_Locally )
 echo "==> Starting clone operation"
 virtcommand="virt-clone --original $fromvmname --name $tovmname --file $storageplace/$tovmname.qcow2 --mac=$macaddr"
 if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
