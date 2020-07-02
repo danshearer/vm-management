@@ -4,8 +4,8 @@ This addresses the problem of what to do if you have a few handfuls of virtual m
 to run on your own hardware including laptops, and you're not interested in orchestration 
 tools because they are too complicated for the task. 
 
-Modern [libvirt][https://gitlab.com/libvirt] does nearly everything required, so all that is needed is to
-script virsh and the virt-* tools. Requirements include:
+Modern [libvirt](https://gitlab.com/libvirt) does nearly everything required, so all that is needed is to
+script virsh and the virt-* tools. Features include:
 
 * IP management by MAC address
 * supply a network or bridge (which, strangely, required editing the XML for the new VM
