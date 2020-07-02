@@ -3,16 +3,20 @@
 # Create Virtual Machines Without Complication
 #
 # For a few dozens of VMs orchestration tools get far too complicated, especially if many of
-# them are on a laptop or for development/testing. Modern libvirt does nearly everything required, so all 
-# that is needed is to script virsh and the virt-* tools. One of the main requirements is IP management,
-# and another is having a simple way to customise a template VM.
+# them are on a laptop or for development/testing. Modern libvirt does nearly everything required, 
+# so all that is needed is to script virsh and the virt-* tools. One of the main requirements is 
+# IP/bridge management, and another is having a simple way to customise a template VM.
 #
-# Uses virsh, virt-clone, virt-sysprep and virt-customize.
+# Uses virsh, virt-clone, virt-sysprep and virt-customize. There are many possible race conditions
+# here, so only run one copy of this at once. Orchestration is hard, and this script doesn't do it.
+# 
+# Weirdly, virsh does not provide a way of changing the bridge assigned to a guest so
+# we have to edit the new VM's XML. 
 #
 # Dan Shearer
 # June 2020
 
-storageplace="/var/lib/libvirt/images/"
+storageplace="/var/lib/libvirt/images"
 
 PrintHelp() {
 	echo " "
@@ -24,9 +28,10 @@ PrintHelp() {
 	echo " "
 	echo "   optional options:"
 	echo "      -o overwrite destination VM config and data"
-	echo "      -q together with -o, quietly overwrite with no questions. DANGEROUS!"
+	echo "      -y together with -o, quietly overwrite with yes to all questions. DANGEROUS!"
 	echo "      -m MAC address. If supplied, must be valid. If not supplied, will be generated"
 	echo "      -4 IPv4 address. If -m supplied, -4 is mandatory"
+	echo "      -b bridge network to attach to. Must appear in output of virsh net-list"
 	echo "      -c filename in which virt-customize commands are kept"
 	echo "      -d debug"
 	echo " "
@@ -38,6 +43,9 @@ PrintHelp() {
 }
 
 ErrorExit() {
+	if [[ -f $tempxml ]]; then   # clean up mktemp output in /tmp
+		rm "$tempxml"
+	fi
 	echo "`basename $0`"
 	echo "        Error: $1"
 	echo "-h for help"
@@ -90,15 +98,22 @@ MakeMACAddr() {
 	macaddr=$MA
 }
 
-while getopts ":t:f:m:4:c:oqdh" flag; do
+#### Script starts here
+
+if [[ ! -d $storageplace ]]; then
+	ErrorExit "Storage directory $storageplace does not exist on this machine"
+fi
+
+while getopts ":t:f:m:4:b:c:oydh" flag; do
     case $flag in
         t) tovmname=$OPTARG;;
         f) fromvmname=$OPTARG;;
         o) overwrite="yes";;
-	q) quietoverwrite="yes";;
+	y) yesquietoverwrite="yes";;
 	d) debug="yes";;
 	m) macaddr=$OPTARG;;
 	4) ipaddr=$OPTARG;;
+	b) bridgenetwork=$OPTARG;;
 	c) commandfile=$OPTARG;;
 	h) helphelp="help";;
 	\?) ErrorExit "Unknown option -$OPTARG" ;;
@@ -111,10 +126,11 @@ if [[ $debug == "yes" ]]; then
    echo "to: $tovmname"
    echo "from: $fromvmname"
    echo "overwrite: $overwrite"
-   echo "quietoverwrite: $quietoverwrite"
+   echo "yesquietoverwrite: $yesquietoverwrite"
    echo "debug: $debug"
    echo "macaddr: $macaddr"
    echo "ipaddr: $ipaddr"
+   echo "bridgenetwork: $bridgenetwork"
    echo "commandfile: $commandfile"
    echo "helphelp: $helphelp"
 fi
@@ -128,8 +144,8 @@ if [[ ( -z $tovmname) || ( -z $fromvmname) ]]; then
 	ErrorExit "Needs both -t and -f specified" ;
 fi
 
-if [[ ( ! -z $quietoverwrite ) && ( -z $overwrite) ]]; then
-	ErrorExit "No -q quiet overwrite without -o overwrite" ;
+if [[ ( ! -z $yesquietoverwrite ) && ( -z $overwrite) ]]; then
+	ErrorExit "No -y quiet yes-to-all overwrite without -o overwrite" ;
 fi
 
 if [[ ( ! -z $commandfile ) && ( ! -f $commandfile) ]]; then
@@ -146,15 +162,26 @@ if [[ ! -z $macaddr ]]; then
 	fi
 fi
 
+if [[ ! -z $bridgenetwork ]]; then
+	if [[ ! (`which xmlstarlet`) ]]; then
+		ErrorExit "xmlstarlet not found, must install to edit virsh bridge" ;
+	fi
+        virtcommand="virsh net-list --name | grep $bridgenetwork" #result has no spaces
+	currentbridge=$(eval "$virtcommand") 
+	if [[ $? != 0 ]]; then
+		ErrorExit "Must specify bridge that appears in virsh net-list" ;
+	fi
+fi
+
 MakeMACAddr $macaddr ;
 
 if (DoesVMExist "$tovmname") then
 	if [[ "$overwrite" != "yes" ]]; then
 		ErrorExit "VM \"$tovmname\" exists, cannot use as a destination VM name" ; 
 	else
-		if [[ "$quietoverwrite" != "yes" ]]; then
+		if [[ "$yesquietoverwrite" != "yes" ]]; then
 			echo " "
-			echo "VM \"$tovmname\" exists, type Yes to destroy it and all storage"
+			echo "VM $tovmname exists, type Yes to destroy it and all storage. -y to avoid this question"
 			select yn in "Yes" "No"; do
 				case $REPLY in
 					Yes) break;;
@@ -187,9 +214,7 @@ fi
 # Cloning in the following recreates the source disk image without change, including things 
 # we don't want such as hostname, any temporary log files, bash history etc. It creates new 
 # storage of the right size and correct XML for the new VM. It must be done as root.
-# virt-clone can assign what it calls a random MAC address in the XML, being a QEMU
-# range with the last three bytes randomised. We don't ever want this (see 
-# https://en.wikipedia.org/wiki/MAC_address#Universal_Addresses_that_are_Administered_Locally )
+# virt-clone can assign a random MAC address in the XML, but we don't ever want this.
 echo "==> Starting clone operation"
 virtcommand="virt-clone --original $fromvmname --name $tovmname --file $storageplace/$tovmname.qcow2 --mac=$macaddr"
 if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
@@ -217,8 +242,30 @@ if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
 eval $virtcommand
 if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
 
+if [[ ! -z $bridgenetwork ]]; then # don't edit XML unless we have to
+	echo "==> Checking bridge"
+	tempxml=$(mktemp /tmp/`basename $0`.XXXXX)
+	virtcommand="virsh dumpxml $tovmname > $tempxml"
+	eval $virtcommand 
+	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+	virtcommand="xmlstarlet sel -t -m '/domain/devices/interface/source' -v @network -nl $tempxml"
+        currentbridge=$(eval $virtcommand);
+	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+	if [[ $currentbridge != $bridgenetwork ]]; then # only edit XML if we must change bridge
+		echo "==> Redefining $tovmname to use $bridgenetwork not $currentbridge"
+		UUID=$(eval "virsh net-info $bridgenetwork | grep UUID | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
+		physicalbridge=$(eval "virsh net-info $bridgenetwork | grep Bridge | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
+                virtcommand="xmlstarlet ed --inplace -u '/domain/devices/interface/source/@network' -v $bridgenetwork $tempxml"
+		eval $virtcommand
+		if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+		virtcommand="virsh -q define $tempxml"
+		eval $virtcommand
+		if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+		rm $tempxml
+	fi
+fi
 
-logger -p local2.info -t VMM "Successful build of VM $tovmname with MAC address $macaddr"
+logger -p local2.info -t VMM "Successful build of VM $tovmname with MAC address $macaddr on network $bridgenetwork"
 
 echo " "
-echo "==> Successful build of VM $toname with MAC address $macaddr"
+echo "==> Successful build of VM $tovmname with MAC address $macaddr on network $bridgenetwork"
