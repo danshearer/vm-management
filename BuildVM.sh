@@ -1,22 +1,30 @@
 #!/bin/bash
 #
-# Create Virtual Machines Without Complication
+# Create Handfuls of Virtual Machines Without Complication
 #
-# For a few dozens of VMs orchestration tools get far too complicated, especially if many of
+# This script is to use instead of ansible/puppet/kubernetes, or writing your own equivalent.
+#
+# For up to a few dozens of VMs, orchestration tools get pretty complicated, especially if many of
 # them are on a laptop or for development/testing. Modern libvirt does nearly everything required, 
 # so all that is needed is to script virsh and the virt-* tools. One of the main requirements is 
-# IP/bridge management, and another is having a simple way to customise a template VM.
+# IP/bridge management, and another is having a simple way to customise a template VM. Then there
+# are the basics like specifying ram. Libvirt does not change much, and when it does it usually 
+# doesn't break compatibility.
 #
-# Uses virsh, virt-clone, virt-sysprep and virt-customize. There are many possible race conditions
-# here, so only run one copy of this at once. Orchestration is hard, and this script doesn't do it.
+# This script uses virsh, virt-clone, virt-sysprep and virt-customize. Many potential race conditions
+# exist, so only run one copy at once. 
+#
+# Orchestration is hard, and this script doesn't even begin to do it.
 # 
 # Weirdly, virsh does not provide a way of changing the bridge assigned to a guest so
-# we have to edit the new VM's XML. 
+# we have to edit the new VM's XML. But virsh and other libvirt commands can do everything else.
 #
 # Dan Shearer
 # June 2020
 
-storageplace="/var/lib/libvirt/images"
+#Change this to eg:
+#storageplace="/var/lib/libvirt/images"
+storageplace="/dev/null"
 
 PrintHelp() {
 	echo " "
@@ -32,6 +40,7 @@ PrintHelp() {
 	echo "      -m MAC address. If supplied, must be valid. If not supplied, will be generated"
 	echo "      -4 IPv4 address. If -m supplied, -4 is mandatory"
 	echo "      -b bridge network to attach to. Must appear in output of virsh net-list"
+	echo "      -r RAM size, in M (mebibytes). Number only, do not specify units"
 	echo "      -c filename in which virt-customize commands are kept"
 	echo "      -d debug"
 	echo " "
@@ -104,7 +113,7 @@ if [[ ! -d $storageplace ]]; then
 	ErrorExit "Storage directory $storageplace does not exist on this machine"
 fi
 
-while getopts ":t:f:m:4:b:c:oydh" flag; do
+while getopts ":t:f:m:4:r:b:c:oydh" flag; do
     case $flag in
         t) tovmname=$OPTARG;;
         f) fromvmname=$OPTARG;;
@@ -113,6 +122,7 @@ while getopts ":t:f:m:4:b:c:oydh" flag; do
 	d) debug="yes";;
 	m) macaddr=$OPTARG;;
 	4) ipaddr=$OPTARG;;
+	r) ramsize=$OPTARG;;
 	b) bridgenetwork=$OPTARG;;
 	c) commandfile=$OPTARG;;
 	h) helphelp="help";;
@@ -130,6 +140,7 @@ if [[ $debug == "yes" ]]; then
    echo "debug: $debug"
    echo "macaddr: $macaddr"
    echo "ipaddr: $ipaddr"
+   echo "ramsize: $ramsize"
    echo "bridgenetwork: $bridgenetwork"
    echo "commandfile: $commandfile"
    echo "helphelp: $helphelp"
@@ -154,6 +165,15 @@ fi
 
 if [[ ($EUID -ne 0) ]]; then
 	ErrorExit "Script not running as root. Not ideal, but needed for now" ;
+fi
+
+if [[ ( ! -z $ramsize ) ]]; then
+	# The following tests if ramsize is an integer, and also proves that bash is mad.
+	# It works because bash throws an error if you pass strings to an integer comparison.
+	[ -n "$ramsize" ] && [ "$ramsize" -eq "$ramsize" ] 2>/dev/null
+	if [ $? -ne 0 ]; then
+		ErrorExit "-r not an integer. Memory size must be in MiB as an integer only" ;
+	fi
 fi
 
 if [[ ! -z $macaddr ]]; then
@@ -242,12 +262,14 @@ if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
 eval $virtcommand
 if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
 
-if [[ ! -z $bridgenetwork ]]; then # don't edit XML unless we have to
+# If a bridge was specified on the commandline, is that the one in the XML?
+if [[ ! -z $bridgenetwork ]]; then 
 	echo "==> Checking bridge"
 	tempxml=$(mktemp /tmp/`basename $0`.XXXXX)
 	virtcommand="virsh dumpxml $tovmname > $tempxml"
 	eval $virtcommand 
 	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+	# Use an XML editor. Don't even think of using sed/cut/etc because XML 
 	virtcommand="xmlstarlet sel -t -m '/domain/devices/interface/source' -v @network -nl $tempxml"
         currentbridge=$(eval $virtcommand);
 	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
@@ -263,6 +285,13 @@ if [[ ! -z $bridgenetwork ]]; then # don't edit XML unless we have to
 		if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
 		rm $tempxml
 	fi
+fi
+
+# If memory size was specified on the commandline, check it and modify the XML accordingly
+if [[ ! -z $ramsize ]]; then 
+	virtcommand="virsh setmaxmem $tovmname ${ramsize}M --config"
+        eval $virtcommand;
+	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
 fi
 
 logger -p local2.info -t VMM "Successful build of VM $tovmname with MAC address $macaddr on network $bridgenetwork"
