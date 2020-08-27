@@ -39,7 +39,7 @@ PrintHelp() {
 	echo "      -4 IPv4 address. If -m supplied, -4 is mandatory"
 	echo "      -b bridge network to attach to. Must appear in output of virsh net-list"
 	echo "      -r RAM size, in M (mebibytes). Number only, do not specify units"
-	echo "      -c filename in which virt-customize commands are kept"
+	echo "      -c filename in which virt-customize commands are kept, eg /files/dns-server.txt"
 	echo "      -d debug"
 	echo " "
 	echo "       Hardcoded VM file location is \"$storageplace\""
@@ -59,6 +59,9 @@ PrintHelp() {
 ErrorExit() {
 	if [[ -f $tempxml ]]; then   # clean up mktemp output in /tmp
 		rm "$tempxml"
+	fi
+	if [[ -f $tempguestmount ]]; then   # unmount guest mountpoint if possible
+		guestunmount $tempguestunmount
 	fi
 	echo "`basename $0`"
 	echo "        Error: $1"
@@ -258,7 +261,7 @@ eval $virtcommand
 if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
 
 # virt-customize can be called by virt-sysprep, but not doing so because it feels more in control.
-# This is where all the customisation happens, there is no limit because scripts can be called. 
+# This is also where user-defined customisation happens, there is no limit what is in '-c filename'.
 # No need to be running as root.
 echo "==> Starting customise operation"
 virtcommand="virt-customize --hostname $tovmname -d $tovmname"
@@ -266,6 +269,21 @@ if [[ ! -z $commandfile ]]; then virtcommand="$virtcommand -c $commandfile" ; fi
 if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
 eval $virtcommand
 if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+echo "      virt-customize complete"
+
+tempguestmount=$(mktemp -d /tmp/`basename $0`-guestmount.XXXXX) 
+virtcommand="guestmount -d $tovmname -i $tempguestmount"
+if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
+eval $virtcommand
+if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand ... will try to unmount but no promises" ; fi
+requestaddress="send dhcp-requested-address "${ipaddr}";"
+virtcommand="sed --in-place '/^send host-name = gethostname.*/a $requestaddress' $tempguestmount/etc/dhcp/dhclient.conf"
+if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
+eval $virtcommand
+virtcommand="guestunmount $tempguestmount"
+if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
+eval $virtcommand
+if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand cannot unmount" ; fi
 
 # If a bridge was specified on the commandline, is that the one in the XML?
 if [[ ! -z $bridgenetwork ]]; then 
