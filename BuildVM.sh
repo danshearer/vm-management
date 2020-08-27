@@ -22,9 +22,7 @@
 # Dan Shearer
 # June 2020
 
-#Change this to eg:
-#storageplace="/var/lib/libvirt/images"
-storageplace="/dev/null"
+storageplace="/tmp"
 
 PrintHelp() {
 	echo " "
@@ -47,6 +45,13 @@ PrintHelp() {
 	echo "       Hardcoded VM file location is \"$storageplace\""
 	echo " "
 	echo "       Must be run as root"
+	echo " "
+	echo "       examples: "
+	echo " "
+	echo "              ./BuildVM.sh -t MyNewServer -f DebianTemplate -r 2048"
+	echo "              ./BuildVM.sh -t AnotherVM -f TemplateVM -r 256 -m aa:fe:aa:aa:aa:01 -4 81.187.159.24"
+	echo " "
+	echo "              (note locally-administered mac address range, see Mac Address in Wikipedia)"
 	echo " "
 	exit 1
 }
