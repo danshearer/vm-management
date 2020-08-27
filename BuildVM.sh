@@ -114,10 +114,6 @@ MakeMACAddr() {
 
 #### Script starts here
 
-if [[ ! -d $storageplace ]]; then
-	ErrorExit "Storage directory $storageplace does not exist on this machine"
-fi
-
 while getopts ":t:f:m:4:r:b:c:oydh" flag; do
     case $flag in
         t) tovmname=$OPTARG;;
@@ -154,6 +150,10 @@ fi
 if [[ ( $OPTIND -lt 3) || (! -z $helphelp) ]];
 then 
 	PrintHelp ;
+fi
+
+if [[ ! -d $storageplace ]]; then
+	ErrorExit "Storage directory $storageplace does not exist on this machine"
 fi
 
 if [[ ( -z $tovmname) || ( -z $fromvmname) ]]; then
