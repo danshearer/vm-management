@@ -22,7 +22,7 @@
 # Dan Shearer
 # June 2020
 
-storageplace="/tmp"
+storageplace="/dev/null"
 
 PrintHelp() {
 	echo " "
