@@ -116,6 +116,16 @@ MakeMACAddr() {
 	macaddr=$MA
 }
 
+# Shell out to run a command, echoing to screen for debug and logging to syslog
+# Consider using an alternative to "eval", which has many famous drawbacks
+ExecCommand() {
+	local thecommand=$1
+	if [[ ! -z $debug ]]; then echo "about to run: $thecommand" ; fi
+	eval $thecommand 
+	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $thecommand" ; fi
+
+}
+
 #### Script starts here
 
 while getopts ":t:f:m:4:r:b:c:oydh" flag; do
@@ -245,21 +255,14 @@ fi
 # storage of the right size and correct XML for the new VM. It must be done as root.
 # virt-clone can assign a random MAC address in the XML, but we don't ever want this.
 echo "==> Starting clone operation"
-virtcommand="virt-clone --original $fromvmname --name $tovmname --file $storageplace/$tovmname.qcow2 --mac=$macaddr"
-if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
-eval $virtcommand
-if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
-
+ExecCommand "virt-clone --original $fromvmname --name $tovmname --file $storageplace/$tovmname.qcow2 --mac=$macaddr" ;
 
 # This mounts and edits the newly-created clone, removing things we don't want and setting up.
 # Running as root although there is no need and it would be safer not to.
 # virt-sysprep does a very thorough clean by default but we don't want that at this stage, 
 # because eg that includes wiping ssh keys. With --enable we specify only the cleaning we want.
 echo "==> Starting sysprep operation"
-virtcommand="virt-sysprep --enable net-hostname,dhcp-client-state,bash-history,backup-files,logfiles,utmp -d $tovmname"
-if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
-eval $virtcommand
-if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+ExecCommand "virt-sysprep --enable net-hostname,dhcp-client-state,bash-history,backup-files,logfiles,utmp -d $tovmname" ;
 
 # virt-customize can be called by virt-sysprep, but not doing so because it feels more in control.
 # This is also where user-defined customisation happens, there is no limit what is in '-c filename'.
@@ -267,55 +270,44 @@ if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
 echo "==> Starting customise operation"
 virtcommand="virt-customize --hostname $tovmname -d $tovmname"
 if [[ ! -z $commandfile ]]; then virtcommand="$virtcommand -c $commandfile" ; fi
-if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
-eval $virtcommand
-if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+ExecCommand "$virtcommand" ;
 echo "      virt-customize complete"
 
 tempguestmount=$(mktemp -d /tmp/`basename $0`-guestmount.XXXXX) 
-virtcommand="guestmount -d $tovmname -i $tempguestmount"
-if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
-eval $virtcommand
-if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand ... will try to unmount but no promises" ; fi
+ExecCommand "guestmount -d $tovmname -i $tempguestmount" ;
+
 requestaddress="send dhcp-requested-address "${ipaddr}";"
-virtcommand="sed --in-place '/^send host-name = gethostname.*/a $requestaddress' $tempguestmount/etc/dhcp/dhclient.conf"
-if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
-eval $virtcommand
-virtcommand="guestunmount $tempguestmount"
-if [[ ! -z $debug ]]; then echo "about to run: $virtcommand" ; fi
-eval $virtcommand
-if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand cannot unmount" ; fi
+ExecCommand "sed --in-place '/^send host-name = gethostname.*/a $requestaddress' $tempguestmount/etc/dhcp/dhclient.conf" ;
+
+ExecCommand "guestunmount $tempguestmount" ;
 
 # If a bridge was specified on the commandline, is that the one in the XML?
 if [[ ! -z $bridgenetwork ]]; then 
 	echo "==> Checking bridge"
 	tempxml=$(mktemp /tmp/`basename $0`.XXXXX)
-	virtcommand="virsh dumpxml $tovmname > $tempxml"
-	eval $virtcommand 
-	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+	ExecCommand "virsh dumpxml $tovmname > $tempxml" ;
+
 	# Use an XML editor. Don't even think of using sed/cut/etc because XML 
+	# Don't use ExecCommand because we want a string return from eval
+	# Look at using something other than 'eval'
 	virtcommand="xmlstarlet sel -t -m '/domain/devices/interface/source' -v @network -nl $tempxml"
         currentbridge=$(eval $virtcommand);
 	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+
 	if [[ $currentbridge != $bridgenetwork ]]; then # only edit XML if we must change bridge
 		echo "==> Redefining $tovmname to use $bridgenetwork not $currentbridge"
-		UUID=$(eval "virsh net-info $bridgenetwork | grep UUID | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
-		physicalbridge=$(eval "virsh net-info $bridgenetwork | grep Bridge | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
-                virtcommand="xmlstarlet ed --inplace -u '/domain/devices/interface/source/@network' -v $bridgenetwork $tempxml"
-		eval $virtcommand
-		if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
-		virtcommand="virsh -q define $tempxml"
-		eval $virtcommand
-		if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+		#Maybe echo UUID and physicalbridge as follows, if $debug
+		#UUID=$(eval "virsh net-info $bridgenetwork | grep UUID | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
+		#physicalbridge=$(eval "virsh net-info $bridgenetwork | grep Bridge | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
+                ExecCommand "xmlstarlet ed --inplace -u '/domain/devices/interface/source/@network' -v $bridgenetwork $tempxml" ;
+		ExecCommand "virsh -q define $tempxml" ;
 		rm $tempxml
 	fi
 fi
 
 # If memory size was specified on the commandline, check it and modify the XML accordingly
 if [[ ! -z $ramsize ]]; then 
-	virtcommand="virsh setmaxmem $tovmname ${ramsize}M --config"
-        eval $virtcommand;
-	if [[ ( $? != 0 ) ]]; then ErrorExit "Failed: $virtcommand" ; fi
+	ExecCommand "virsh setmaxmem $tovmname ${ramsize}M --config" ;
 fi
 
 logger -p local2.info -t VMM "Successful build of VM $tovmname with MAC address $macaddr on network $bridgenetwork"
