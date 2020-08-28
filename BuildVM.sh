@@ -166,6 +166,11 @@ then
 	PrintHelp ;
 fi
 
+if [[ ! (`which virsh`) ]]; then
+	ErrorExit "virsh not found, so there is no way this script will work" ;
+fi
+
+
 if [[ ! -d $storageplace ]]; then
 	ErrorExit "Storage directory $storageplace does not exist on this machine"
 fi
