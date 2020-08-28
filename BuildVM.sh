@@ -296,9 +296,11 @@ if [[ ! -z $bridgenetwork ]]; then
 
 	if [[ $currentbridge != $bridgenetwork ]]; then # only edit XML if we must change bridge
 		echo "==> Redefining $tovmname to use $bridgenetwork not $currentbridge"
-		#Maybe echo UUID and physicalbridge as follows, if $debug
-		#UUID=$(eval "virsh net-info $bridgenetwork | grep UUID | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
-		#physicalbridge=$(eval "virsh net-info $bridgenetwork | grep Bridge | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
+		if [[ ! -z $debug ]]; then
+			UUID=$(eval "virsh net-info $bridgenetwork | grep UUID | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")
+			physicalbridge=$(eval "virsh net-info $bridgenetwork | grep Bridge | cut -f2 -d: | sed -e 's/^[[:space:]]*//'")	
+			echo "Target bridge $bridgenetwork has UUID $UUID and is attached to $physicalbridge"
+		fi
                 ExecCommand "xmlstarlet ed --inplace -u '/domain/devices/interface/source/@network' -v $bridgenetwork $tempxml" ;
 		ExecCommand "virsh -q define $tempxml" ;
 		rm $tempxml
