@@ -72,7 +72,7 @@ ErrorExit() {
 }
 
 DoesVMExist() {
-	vname=$1
+	local vname=$1
 	# --all also gives VMs that are defined but not running
 	tmp=$(virsh list --all | grep $vname | tr -s ' ' | cut -d ' ' -f3)
 	if ([ "$vname" == "$tmp" ])
@@ -85,7 +85,7 @@ DoesVMExist() {
 
 IsVMRunning() {
 	# Might need to add tests for how alive the running VM really is
-	vname=$1
+	local vname=$1
 	tmp=$(virsh list | grep $vname | tr -s ' ' | cut -d ' ' -f3)
 	if ([ "$vname" == "$tmp" ])
 	then
@@ -97,7 +97,7 @@ IsVMRunning() {
 
 # Basic MAC checks, or, create random legal MAC. virt-clone also does some validity checks.
 MakeMACAddr() {
-	MA=$1
+	local MA=$1
 	if [[ -z $MA ]]; then
 		# construct valid private MAC addr in the "E" range. Ranges are listed in the
 		# table here: https://en.wikipedia.org/wiki/MAC_address . Use the prefix 
