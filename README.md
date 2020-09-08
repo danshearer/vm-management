@@ -2,13 +2,22 @@
 
 This addresses the problem of managing a few handfuls of virtual machines to
 run on your own hardware including laptops, and you're not interested in
-orchestration tools because they are too complicated for the task. 
+orchestration tools because they are too complicated for the task.
+[Kubernetes](https://kubernetes.io), [Kontena](https://www.kontena.io/) and
+various other stackings-up of containers, orchestration and so on are the sort
+of thing people get a career in. On the other hand,
+[Virt-Manager](https://virt-manager.org/) is very manual.
 
-Modern [libvirt](https://gitlab.com/libvirt) does nearly everything required, and it doesn't 
-tend to keep changing underneath us, so all that is needed is some scripting around virsh and 
-the virt-* tools. 
+Modern [libvirt](https://gitlab.com/libvirt) comes with nearly everything
+required if you are looking for orchestration rather than management. Libvirt
+doesn't tend to keep changing underneath us, so all that is needed is some
+scripting around the commandline virsh and the virt-* tools. You'll need to do your own
+monitoring, but you'll be expecting that and it is not difficult anyway.
 
-Features include:
+Something Libvirt doesn't do so well is help you create images in the first
+place. That's what this script does.
+
+Features of this script include:
 
 * IP management by MAC address, and optionally DHCP static requests
 * supply a network or bridge (which, strangely, required editing the XML for the new VM)

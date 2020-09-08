@@ -50,7 +50,7 @@ PrintHelp() {
 	echo " "
 	echo "              ./BuildVM.sh -t MyNewServer -f DebianTemplate -r 2048"
 	echo " "
-	echo "              ./BuildVM.sh -t AnotherVM -f TemplateVM -r 256 -m aa:fe:aa:aa:aa:01 -4 81.187.159.24"
+	echo "              ./BuildVM.sh -t AnotherVM -f TemplateVM -r 256 -m aa:fe:aa:aa:aa:01 -4 10.17.91.8"
 	echo " "
 	echo "        (-m can come from a locally-administered mac address range, see 'Mac Address' in Wikipedia)"
 	echo " "
