@@ -22,7 +22,7 @@
 # Dan Shearer
 # June 2020
 
-storageplace="/dev/null"
+storageplace="/dev/zero"  # Change this!
 
 PrintHelp() {
 	echo " "
@@ -40,6 +40,7 @@ PrintHelp() {
 	echo "      -b bridge network to attach to. Must appear in output of virsh net-list"
 	echo "      -r RAM size, in M (mebibytes). Number only, do not specify units"
 	echo "      -c filename in which virt-customize commands are kept, eg /files/dns-server.txt"
+	echo "      -s start the VM after creating it"
 	echo "      -d debug"
 	echo " "
 	echo "       Hardcoded VM file location is \"$storageplace\". You may want to change this."
@@ -128,7 +129,7 @@ ExecCommand() {
 
 #### Script starts here
 
-while getopts ":t:f:m:4:r:b:c:oydh" flag; do
+while getopts ":t:f:m:4:r:b:c:oydsh" flag; do
     case $flag in
         t) tovmname=$OPTARG;;
         f) fromvmname=$OPTARG;;
@@ -140,6 +141,7 @@ while getopts ":t:f:m:4:r:b:c:oydh" flag; do
 	r) ramsize=$OPTARG;;
 	b) bridgenetwork=$OPTARG;;
 	c) commandfile=$OPTARG;;
+	s) startvm=$OPTARG;;
 	h) helphelp="help";;
 	\?) ErrorExit "Unknown option -$OPTARG" ;;
         :) ErrorExit "Missing option argument for -$OPTARG" ;;
@@ -158,6 +160,7 @@ if [[ $debug == "yes" ]]; then
    echo "ramsize: $ramsize"
    echo "bridgenetwork: $bridgenetwork"
    echo "commandfile: $commandfile"
+   echo "startvm: $startvm"
    echo "helphelp: $helphelp"
 fi
 
@@ -321,3 +324,17 @@ logger -p local2.info -t VMM "Successful build of VM $tovmname with MAC address 
 
 echo " "
 echo "==> Successful build of VM $tovmname with MAC address $macaddr on network $bridgenetwork"
+
+# Now start it
+if [[ ! -z $startvm ]]; then
+	ExecCommand "virsh start $tovmname";
+	# The following delay is arbitary and server-dependent
+	wait 2
+        if ! IsVMRunning "$tovmname" ; then
+		logger -p local2.info -t VMM "Error: could not start new VM \"$toname\" as requested after build"
+		ErrorExit "New VM \"$toname\" could not be started as requested" ;
+	fi
+	logger -p local2.info -t VMM "Successfully started new VM \"$toname\" as requested after build"
+	echo " "
+	echo "==> Successfully started new VM $tovmname as requested"
+fi

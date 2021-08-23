@@ -1,4 +1,6 @@
-# Virtual Machine Tools
+# Create Handfuls of Virtual Machines Without Complication
+
+TL;DR: Reduces the pain of using libvirt to create VMs
 
 This addresses the problem of managing a few handfuls of virtual machines to
 run on your own hardware including laptops, and you're not interested in
@@ -20,7 +22,7 @@ place. That's what this script does.
 Features of this script include:
 
 * IP management by MAC address, and optionally DHCP static requests
-* supply a network or bridge (which, strangely, required editing the XML for the new VM)
+* supply a network or bridge (which, strangely, requires editing the XML for the new VM)
 * a simple way to customise a template VM, eg to recreate a standard firewall VM or DNS VM
 * logging VM build process via syslog
 
