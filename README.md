@@ -26,6 +26,8 @@ Features of this script include:
 * a simple way to customise a template VM, eg to recreate a standard firewall VM or DNS VM
 * logging VM build process via syslog
 
+This is a bash script, not a Bourne shell script.
+
 Here is the help output:
 
 ````
