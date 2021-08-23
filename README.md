@@ -1,6 +1,6 @@
-# Create Handfuls of Virtual Machines Without Complication
+# Create Handfuls of Virtual Machines With libvirt
 
-TL;DR: Reduces the pain of using libvirt to create VMs
+TL;DR: Create VMs from templates using libvirt's tools and nothing else
 
 This addresses the problem of managing a few handfuls of virtual machines to
 run on your own hardware including laptops, and you're not interested in
@@ -30,7 +30,7 @@ Here is the help output:
 
 ````
 BuildVM.sh
- 
+
    mandatory options:
       -t destination VM name. Must be unused, unless -o also specified
       -f from VM name, typically a template. VM must be shut down
@@ -43,9 +43,10 @@ BuildVM.sh
       -b bridge network to attach to. Must appear in output of virsh net-list
       -r RAM size, in M (mebibytes). Number only, do not specify units
       -c filename in which virt-customize commands are kept, eg /files/dns-server.txt
+      -s start the VM after creating it
       -d debug
  
-       Hardcoded VM file location is "/dev/null". You may want to change this.
+       Hardcoded VM file location is "/dev/zero". You may want to change this.
  
        Must be run as root
  
@@ -53,7 +54,7 @@ BuildVM.sh
  
               ./BuildVM.sh -t MyNewServer -f DebianTemplate -r 2048
  
-              ./BuildVM.sh -t AnotherVM -f TemplateVM -r 256 -m aa:fe:aa:aa:aa:01 -4 81.187.159.24
+              ./BuildVM.sh -t AnotherVM -f TemplateVM -r 256 -m aa:fe:aa:aa:aa:01 -4 10.17.91.8
  
         (-m can come from a locally-administered mac address range, see 'Mac Address' in Wikipedia)
  
