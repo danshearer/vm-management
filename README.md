@@ -11,7 +11,7 @@ of thing people get a career in. On the other hand,
 [Virt-Manager](https://virt-manager.org/) is very manual.
 
 Modern [libvirt](https://gitlab.com/libvirt) comes with nearly everything
-required if you are looking for orchestration rather than management. Libvirt
+required if you are looking for management rather than orchestration. Libvirt
 doesn't tend to keep changing underneath us, so all that is needed is some
 scripting around the commandline virsh and the virt-* tools. You'll need to do your own
 monitoring, but you'll be expecting that and it is not difficult anyway.
