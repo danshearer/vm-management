@@ -183,7 +183,7 @@ if [[ ( -z $tovmname) || ( -z $fromvmname) ]]; then
 fi
 
 if [[ ( ! -z $yesquietoverwrite ) && ( -z $overwrite) ]]; then
-	ErrorExit "No -y quiet yes-to-all overwrite without -o overwrite" ;
+	ErrorExit "Cannot use -y silent yes-to-all overwrite without also specifying -o overwrite" ;
 fi
 
 if [[ ( ! -z $commandfile ) && ( ! -f $commandfile) ]]; then
