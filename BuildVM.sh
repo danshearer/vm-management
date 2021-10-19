@@ -22,7 +22,7 @@
 # Dan Shearer
 # June 2020
 
-storageplace="/tank/vms"
+storageplace="/dev/zero"
 
 PrintHelp() {
 	echo " "
@@ -141,7 +141,7 @@ while getopts ":t:f:m:4:r:b:c:oydsh" flag; do
 	r) ramsize=$OPTARG;;
 	b) bridgenetwork=$OPTARG;;
 	c) commandfile=$OPTARG;;
-	s) startvm=$OPTARG;;
+	s) startvm="yes";;
 	h) helphelp="help";;
 	\?) ErrorExit "Unknown option -$OPTARG" ;;
         :) ErrorExit "Missing option argument for -$OPTARG" ;;
@@ -326,7 +326,7 @@ echo " "
 echo "==> Successful build of VM $tovmname with MAC address $macaddr on network $bridgenetwork"
 
 # Now start it
-if [[ ! -z $startvm ]]; then
+if [[ "$startvm" == "yes" ]]; then
 	ExecCommand "virsh start $tovmname";
 	# The following delay is arbitary and server-dependent
 	wait 2
