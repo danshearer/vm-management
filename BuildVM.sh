@@ -228,16 +228,18 @@ if (DoesVMExist "$tovmname") then
 	else
 		if [[ "$yesquietoverwrite" != "yes" ]]; then
 			echo " "
-			echo "VM $tovmname exists, type Yes to destroy it and all storage. -y to avoid this question"
-			select yn in "Yes" "No"; do
+			echo "VM \"$tovmname\" exists, type 1 to erase it (next time you might want to use the -y switch.)"
+			PS3="Enter a number:"
+			select REPLY in 1 2; do
 				case $REPLY in
-					Yes) break;;
-				 	No) ErrorExit "User selected no-destroy. Better safe than sorry." ;;
+					1) break;;
+				 	2) ErrorExit "User selected no-destroy. Better safe than sorry." ;;
 				esac
 			done
 		fi
+                IsVMRunning "$tovmname" && { ErrorExit "VM \"$tovmname\" is running, shutdown before erasing!" ; }
 		if ( ! virsh undefine $tovmname --remove-all-storage) then
-			ErrorExit "virsh undefine failed, is domain running?" 
+			ErrorExit "virsh undefine failed. Have you checked if the domain is still running?" 
 		fi	
 	fi
 fi
