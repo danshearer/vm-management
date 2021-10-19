@@ -22,7 +22,7 @@
 # Dan Shearer
 # June 2020
 
-storageplace="/dev/zero"  # Change this!
+storageplace="/tank/vms"
 
 PrintHelp() {
 	echo " "
@@ -211,7 +211,7 @@ fi
 
 if [[ ! -z $bridgenetwork ]]; then
 	if [[ ! (`which xmlstarlet`) ]]; then
-		ErrorExit "xmlstarlet not found, must install to edit virsh bridge" ;
+		ErrorExit "xmlstarlet not found, must install it to edit virsh bridge" ;
 	fi
         virtcommand="virsh net-list --name | grep $bridgenetwork" #result has no spaces
 	currentbridge=$(eval "$virtcommand") 
