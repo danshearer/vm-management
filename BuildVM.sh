@@ -331,7 +331,7 @@ echo "==> Successful build of VM $tovmname with MAC address $macaddr on network 
 if [[ "$startvm" == "yes" ]]; then
 	ExecCommand "virsh start $tovmname";
 	# The following delay is arbitary and server-dependent
-	wait 2
+	ExecCommand "sleep 2" ;
         if ! IsVMRunning "$tovmname" ; then
 		logger -p local2.info -t VMM "Error: could not start new VM \"$toname\" as requested after build"
 		ErrorExit "New VM \"$toname\" could not be started as requested" ;
