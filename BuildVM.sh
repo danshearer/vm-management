@@ -20,7 +20,7 @@
 # we have to edit the new VM's XML. But virsh and other libvirt commands can do everything else.
 #
 # Dan Shearer
-# June 2020
+# Oct 2021
 
 storageplace="/dev/zero"
 
@@ -30,10 +30,10 @@ PrintHelp() {
 	echo " "
 	echo "   mandatory options:"
 	echo "      -t destination VM name. Must be unused, unless -o also specified"
-	echo "      -f from VM name, typically a template. VM must be shut down"
+	echo "      -f from VM name, typically a template. VM must not be currently running"
 	echo " "
 	echo "   optional options:"
-	echo "      -o overwrite destination VM config and data"
+	echo "      -o overwrite destination VM config and data. Will ask an interactive question"
 	echo "      -y together with -o, quietly overwrite with yes to all questions. DANGEROUS!"
 	echo "      -m MAC address. If supplied, must be valid. If not supplied, will be generated"
 	echo "      -4 IPv4 address. If -m supplied, -4 is mandatory"
@@ -41,11 +41,14 @@ PrintHelp() {
 	echo "      -r RAM size, in M (mebibytes). Number only, do not specify units"
 	echo "      -c filename in which virt-customize commands are kept, eg /files/dns-server.txt"
 	echo "      -s start the VM after creating it"
-	echo "      -d debug"
+	echo "      -d debug. Write status information to console."
 	echo " "
-	echo "       Hardcoded VM file location is \"$storageplace\". You may want to change this."
+	echo "       Successful builds and starts, and fatal errors, are sent to syslog facility local2.info"
 	echo " "
-	echo "       Must be run as root"
+	echo "       Hardcoded VM file location is currently \"$storageplace\". You may want to change this."
+	echo " "
+	echo "       Must be run as root. This script is not secure and could destroy your system."
+	echo "       This is a bash script, not a bourne or other shell script."
 	echo " "
 	echo "       examples: "
 	echo " "
@@ -118,7 +121,7 @@ MakeMACAddr() {
 }
 
 # Shell out to run a command, echoing to screen for debug and logging to syslog
-# Consider using an alternative to "eval", which has many famous drawbacks
+# Consider using an alternative to "eval", which has lots of problems including security
 ExecCommand() {
 	local thecommand=$1
 	if [[ ! -z $debug ]]; then echo "about to run: $thecommand" ; fi

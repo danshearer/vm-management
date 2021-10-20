@@ -2,13 +2,14 @@
 
 TL;DR: Create VMs from templates using libvirt's tools and nothing else
 
-This addresses the problem of managing a few handfuls of virtual machines to
-run on your own hardware including laptops, and you're not interested in
-orchestration tools because they are too complicated for the task.
+This script is for managing small handfuls of virtual machines to
+run on your own hardware including laptops. You might like it if 
+orchestration tools are too complicated for your small task.
 [Kubernetes](https://kubernetes.io), [Kontena](https://www.kontena.io/) and
-various other stackings-up of containers, orchestration and so on are the sort
-of thing people get a career in. On the other hand,
-[Virt-Manager](https://virt-manager.org/) is very manual.
+similar software are very large, and people can have jobs and careers in them.
+On the other hand,
+[Virt-Manager](https://virt-manager.org/) is a manual GUI application. This
+script is a simple, partly-automated solution.
 
 Modern [libvirt](https://gitlab.com/libvirt) comes with nearly everything
 required if you are looking for management rather than orchestration. Libvirt
@@ -32,13 +33,13 @@ Here is the help output:
 
 ````
 BuildVM.sh
-
+ 
    mandatory options:
       -t destination VM name. Must be unused, unless -o also specified
-      -f from VM name, typically a template. VM must be shut down
+      -f from VM name, typically a template. VM must not be currently running
  
    optional options:
-      -o overwrite destination VM config and data
+      -o overwrite destination VM config and data. Will ask an interactive question
       -y together with -o, quietly overwrite with yes to all questions. DANGEROUS!
       -m MAC address. If supplied, must be valid. If not supplied, will be generated
       -4 IPv4 address. If -m supplied, -4 is mandatory
@@ -46,11 +47,14 @@ BuildVM.sh
       -r RAM size, in M (mebibytes). Number only, do not specify units
       -c filename in which virt-customize commands are kept, eg /files/dns-server.txt
       -s start the VM after creating it
-      -d debug
+      -d debug. Write status information to console.
  
-       Hardcoded VM file location is "/dev/zero". You may want to change this.
+       Successful builds and starts, and fatal errors, are sent to syslog facility local2.info
  
-       Must be run as root
+       Hardcoded VM file location is currently "/dev/zero". You may want to change this.
+ 
+       Must be run as root. This script is not secure and could destroy your system.
+       This is a bash script, not a bourne or other shell script.
  
        examples: 
  
