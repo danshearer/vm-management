@@ -1,24 +1,31 @@
 # Create Handfuls of Virtual Machines With libvirt
 
-TL;DR: Create VMs from templates using libvirt's tools and nothing else
+TL;DR: Create VMs from templates using libvirt's commandline tools and nothing else.
+
+Hope you find it useful.
+
+--
+Dan Shearer
+dan@shearer.org
+
+# More Details
 
 This script is for managing small handfuls of virtual machines to
 run on your own hardware including laptops. You might like it if 
 orchestration tools are too complicated for your small task.
+
+Modern [libvirt](https://gitlab.com/libvirt) comes with nearly everything
+required if you are looking for management rather than orchestration. Something
+Libvirt doesn't do so well is help you create images in the first place. That's
+what this script does.
+
 [Kubernetes](https://kubernetes.io), [Kontena](https://www.kontena.io/) and
 similar software are very large, and people can have jobs and careers in them.
 On the other hand,
 [Virt-Manager](https://virt-manager.org/) is a manual GUI application. This
-script is a simple, partly-automated solution.
+script is a simple, partly-automated commandline solution.
 
-Modern [libvirt](https://gitlab.com/libvirt) comes with nearly everything
-required if you are looking for management rather than orchestration. Libvirt
-doesn't tend to keep changing underneath us, so all that is needed is some
-scripting around the commandline virsh and the virt-* tools. You'll need to do your own
-monitoring, but you'll be expecting that and it is not difficult anyway.
-
-Something Libvirt doesn't do so well is help you create images in the first
-place. That's what this script does.
+You'll need to do your own monitoring, but you'll be expecting that.
 
 Features of this script include:
 
@@ -27,12 +34,16 @@ Features of this script include:
 * a simple way to customise a template VM, eg to recreate a standard firewall VM or DNS VM
 * logging VM build process via syslog
 
+Many potential race conditions exist, so only run one copy at once.
+
 This is a bash script, not a Bourne shell script.
 
-Here is the help output:
+Here is the help output, prior to setting a VM image destination:
 
 ````
-BuildVM.sh
+BuildVM.sh version 1.0
+ 
+   !!SET VM DESTINATION!! Assign $storageplace at the top of /home/dan/d/vm-management/BuildVM.sh.
  
    mandatory options:
       -t destination VM name. Must be unused, unless -o also specified
@@ -51,7 +62,6 @@ BuildVM.sh
  
        Successful builds and starts, and fatal errors, are sent to syslog facility local2.info
  
-       Hardcoded VM file location is currently "/dev/zero". You may want to change this.
  
        Must be run as root. This script is not secure and could destroy your system.
        This is a bash script, not a bourne or other shell script.

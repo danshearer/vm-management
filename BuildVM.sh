@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Create Handfuls of Virtual Machines Without Complication
+# Easily Create Handfuls of Virtual Machines
 #
 # This script is to use instead of ansible/puppet/kubernetes, or writing your own equivalent.
 #
@@ -20,13 +20,22 @@
 # we have to edit the new VM's XML. But virsh and other libvirt commands can do everything else.
 #
 # Dan Shearer
-# Oct 2021
+# dan@shearer.org
+# Nov 2021
 
+version="1.0"
 storageplace="/dev/zero"
 
 PrintHelp() {
 	echo " "
-	echo "`basename $0`"
+	echo "`basename $0` version $version"
+	echo " "
+        if ([ "$storageplace" == "/dev/zero" ])
+	then
+		echo "   !!SET VM DESTINATION!! Assign \$storageplace at the top of `realpath $0.`"
+	else
+		echo "   Hardcoded VM file location is \"$storageplace\"."
+	fi
 	echo " "
 	echo "   mandatory options:"
 	echo "      -t destination VM name. Must be unused, unless -o also specified"
@@ -45,7 +54,6 @@ PrintHelp() {
 	echo " "
 	echo "       Successful builds and starts, and fatal errors, are sent to syslog facility local2.info"
 	echo " "
-	echo "       Hardcoded VM file location is currently \"$storageplace\". You may want to change this."
 	echo " "
 	echo "       Must be run as root. This script is not secure and could destroy your system."
 	echo "       This is a bash script, not a bourne or other shell script."
