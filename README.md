@@ -75,3 +75,12 @@ BuildVM.sh version 1.0
         (-m can come from a locally-administered mac address range, see 'Mac Address' in Wikipedia)
  
 ````
+
+# FAQ
+
+* Yes, I like containers
+* No, this isn't about containers
+* No, I don't like docker
+* Yes, I like lxc
+* Yes, I like the lxd design
+* No, I don't use lxd. It's specific to Ubuntu/Canonical at the moment
