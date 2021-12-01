@@ -76,11 +76,13 @@ BuildVM.sh version 1.0
  
 ````
 
-# FAQ
+# FAQ-ish
 
 * Yes, I like containers
 * No, this isn't about containers
-* No, I don't like docker
+* No, I don't like Docker
 * Yes, I like lxc
 * Yes, I like the lxd design
 * No, I don't use lxd. It's specific to Ubuntu/Canonical at the moment
+* But doesn't virsh work with containers, so this script can too?
+* Nope. The lxc virsh module was deprecated years ago, in favour of Docker. 
